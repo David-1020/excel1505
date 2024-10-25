@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Search</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+</head>
+<body>
+    <h1>商品簡易查詢</h1>
+    
+    <!-- 文件上傳 -->
+    <input type="file" id="fileInput" accept=".xls, .xlsx, .xlsm" />
+    
+    <!-- 搜尋框 -->
+    <input type="text" id="searchBox" placeholder="請輸入" />
+    
+    <!-- 搜尋結果顯示 -->
+    <table border="1" id="resultTable">
+        <thead>
+            <tr>
+                <th>品號</th>
+                <th>商品名稱</th>
+                <th>庫存</th>
+                <th>備註</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 搜尋結果將顯示在這裡 -->
+        </tbody>
+    </table>
+    
+    <script>
+        let excelData = [];  // 這裡存放從 Excel 讀取的數據
+
+        // 讀取並分析 Excel 文件
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // 假設我們讀取的是第一個工作表
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // 將工作表内容轉換為 JSON 格式
+                excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                // 檢查分析後的數據
+                console.log(excelData);
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
+        // 實現搜尋功能
+        document.getElementById('searchBox').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const resultTableBody = document.getElementById('resultTable').getElementsByTagName('tbody')[0];
+            resultTableBody.innerHTML = '';  // 清空之前的搜尋結果
+
+            // 遍歷 Excel 數據，查找匹配的商品
+            excelData.forEach((row, index) => {
+                if (index === 0) return;  // 跳過表頭
+                
+                const productNo = row[0] ? row[0].toString() : '';
+                const productName = row[1] ? row[1].toString().toLowerCase() : '';
+                const stock = row[2] ? row[2].toString() : '';
+                const note = row[3] ? row[3].toString() : '';
+
+                if (productNo.includes(searchTerm) || productName.includes(searchTerm) || note.includes(searchTerm)) {
+                    const newRow = resultTableBody.insertRow();
+                    const cell1 = newRow.insertCell(0);
+                    const cell2 = newRow.insertCell(1);
+                    const cell3 = newRow.insertCell(2);
+                    const cell4 = newRow.insertCell(3);
+                    cell1.textContent = productNo;
+                    cell2.textContent = productName;
+                    cell3.textContent = stock;
+                    cell4.textContent = note;
+                }
+            });
+        });
+
+        // 註冊 Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(function() {
+                console.log('Service Worker Registered');
+            }).catch(function(error) {
+                console.log('Service Worker Registration Failed:', error);
+            });
+        }
+    </script>
+</body>
+</html>
